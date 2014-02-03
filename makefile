@@ -1,6 +1,6 @@
-prog: ftpclient.c ftpserver.c
-	gcc -g -Wall ftpserver.c -o ftpServer
-	gcc -g -Wall ftpclient.c -o ftpClient
+prog: ftpclient.cpp ftpserver.cpp
+	g++ ftpserver.cpp -Wall -o ftpServer
+	g++ ftpclient.cpp -Wall -o ftpClient
 	
 testserv:
 	./ftpServer 1459
