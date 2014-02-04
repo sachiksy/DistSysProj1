@@ -28,6 +28,7 @@ void *Echo (void *threadargs){ //tk (int sid, char *str)
 		perror("write\n");
 		exit(-7);
 	}
+	memset( data->string, '\0', sizeof(data->string) );
 	return NULL;
 	/*
 	int strIndex, wCheck;
@@ -86,7 +87,12 @@ int main(int argc, char *argv[]){
 	
 	//Accepts a client and calls the echo function
 	int m; //tk
-	while ((client=accept(sockid, (struct sockaddr *) &saddr, &addrlen))>0){
+	while (1){
+		//check if connection is accepted
+		if((client=accept(sockid, (struct sockaddr *) &saddr, &addrlen))<=0){
+			continue;
+		}
+		
 		if (read(client, buf, 1024)<0){
 			perror("read");
 			exit(-4);
