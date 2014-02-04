@@ -8,8 +8,28 @@
 #include <netinet/in.h>
 #include <signal.h>
 
+struct thread_data{
+	int sid;
+	char *string;
+};
+
 //Prints the message from the clients and writes the same message back to the client
-void echo (int sid, char *str){
+void *Echo (void *threadargs){ //tk (int sid, char *str)
+	int wCheck;
+	
+	struct thread_data *data;
+	data=(struct thread_data *) threadargs;
+	int sid=data->sid;
+	char *str=data->string;
+	
+	printf("Echo: %s\n", str);
+	wCheck=write(sid, str, strlen(str));
+	if (wCheck<0){
+		perror("write\n");
+		exit(-7);
+	}
+	return NULL;
+	/*
 	int strIndex, wCheck;
 	printf("Echo: ");
 	for (strIndex=0; str[strIndex]!='\0'; strIndex++){
@@ -21,6 +41,7 @@ void echo (int sid, char *str){
 		perror("write\n");
 		exit(-6);
 	}
+	*/
 }
 
 int main(int argc, char *argv[]){
@@ -32,6 +53,9 @@ int main(int argc, char *argv[]){
 	unsigned int addrlen = 0;
 	char buf[1024];
 	struct sockaddr_in saddr;
+	int numThreads=2; //tk
+	pthread_t threads[numThreads];//tk
+	struct thread_data data_arr[numThreads];//tk
 	
 	//checks for command-line params
 	if(argc!=2){
@@ -61,7 +85,20 @@ int main(int argc, char *argv[]){
 	listen(sockid, 0);
 	
 	//Accepts a client and calls the echo function
+	int m; //tk
 	while ((client=accept(sockid, (struct sockaddr *) &saddr, &addrlen))>0){
+		if (read(client, buf, 1024)<0){
+			perror("read");
+			exit(-4);
+		}
+		data_arr[0].sid=client;
+		data_arr[0].string=buf;
+		m = pthread_create(&threads[0], NULL, Echo, (void *) &data_arr[0]);
+		if (m){
+			perror("Pthread");
+			exit(-5);
+		}
+	/*
 		int m;
 		m=fork();
 		if (m<0){
@@ -82,8 +119,9 @@ int main(int argc, char *argv[]){
 			//Parent process
 			close(client);
 		}
+		*/
 	}
-	
+	pthread_exit(NULL); //tk
 	exit(0);
 
 }
