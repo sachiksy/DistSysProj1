@@ -1,18 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 #include <unistd.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
+using namespace std;
 
 int main(int argc, char *argv[]){
 
 	int sock, i;
 	struct sockaddr_in saddr;
-	char buf[1024]="Success!\n";
+	char buf[1024];
 	struct in_addr inp;
 
 	if (argc!=3){
@@ -35,7 +37,8 @@ int main(int argc, char *argv[]){
 		perror("connection");
 		exit(3);
 	}
-
+	
+	cin.getline(buf, 1024);
 	i=write(sock, buf, strlen(buf));
 	if (i<0){
 		perror("write");

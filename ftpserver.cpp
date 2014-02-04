@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -28,7 +29,7 @@ int main(int argc, char *argv[]){
 	signal(SIGCHLD, SIG_IGN);
 
 	int sockid, client;
-	unsigned int addrlen;
+	unsigned int addrlen = 0;
 	char buf[1024];
 	struct sockaddr_in saddr;
 	
@@ -58,7 +59,6 @@ int main(int argc, char *argv[]){
 	}
 	
 	listen(sockid, 0);
-	addrlen=0;
 	
 	//Accepts a client and calls the echo function
 	while ((client=accept(sockid, (struct sockaddr *) &saddr, &addrlen))>0){
