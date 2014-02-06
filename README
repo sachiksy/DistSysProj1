@@ -4,5 +4,15 @@ DistSysProj1
 Simple FTP Server and Client: Project 1 for Distributed Systems
 
 Added an echo server and echo client. Echo server now runs on a thread.
+Server and client both loop properly. exit and pwd work (maybe need an ignore case function?).
+Stubs catch all other functions.
 
-TESTING!!!
+To do:
+1). Tokenize user input in void* echo function for args to cd, get, put, delete, mkdir. strtok() should work.
+2). Implement ls (commented-out code has been inserted but neither tested nor refined)
+3). Implement cd
+4). Implement delete
+5). Implement mkdir
+6). Implement get
+7). Implement put
+8). Maybe implement data socket for get and put?
