@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <dirent.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -10,39 +11,79 @@
 
 struct thread_data{
 	int sid;
-	char *string;
+	//char *string;
 };
 
 //Prints the message from the clients and writes the same message back to the client
 void *Echo (void *threadargs){ //tk (int sid, char *str)
 	int wCheck;
-	
 	struct thread_data *data;
 	data=(struct thread_data *) threadargs;
 	int sid=data->sid;
-	char *str=data->string;
+	char str[1024];
 	
-	printf("Echo: %s\n", str);
-	wCheck=write(sid, str, strlen(str));
-	if (wCheck<0){
-		perror("write\n");
-		exit(-7);
+	while(strcmp(str, "exit")!=0){
+		memset(str, '\0', sizeof(str));
+		if (read(sid, str, 1024)<0){
+			perror("read");
+			exit(-4);
+		}
+		
+		/*
+		We need to implement a string parser to tokenize commands
+		*/
+		
+		//Switch for the 7 main commands (not including exit). Else is echo
+		if(strcmp(str, "get")==0){
+			printf("Please implement 'get'\n");
+		}
+		else if(strcmp(str, "put")==0){
+			printf("Please implement 'put'\n");
+		}
+		else if(strcmp(str, "delete")==0){
+			printf("Please implement 'delete'\n");
+		}
+		else if(strcmp(str, "ls")==0){
+			printf("Please implement 'ls'\n");
+			/*
+			DIR *dir;
+			struct dirent *entry;
+
+			if ((dir = opendir("/")) == NULL)
+				perror("opendir() error");
+			else {
+				puts("contents of root:");
+				while ((entry = readdir(dir)) != NULL){
+					printf("  %s\n", entry->d_name);
+				}
+				closedir(dir);
+			}
+			*/
+		}
+		else if(strcmp(str, "cd")==0){
+			printf("Please implement 'cd'\n");
+		}
+		else if(strcmp(str, "mkdir")==0){
+			printf("Please implement 'mkdir'\n");
+		}
+		else if(strcmp(str, "pwd")==0){
+			if (getcwd(str, sizeof(str)) == NULL){
+				perror("getcwd() error");
+			}
+			printf("CWD is: %s\n", str);
+		}
+		else{
+			printf("Echo: %s\n", str);
+		}
+		
+		//write back to the client
+		wCheck=write(sid, str, strlen(str));
+		if (wCheck<0){
+			perror("write\n");
+			exit(-7);
+		}
 	}
-	memset( data->string, '\0', sizeof(data->string) );
 	return NULL;
-	/*
-	int strIndex, wCheck;
-	printf("Echo: ");
-	for (strIndex=0; str[strIndex]!='\0'; strIndex++){
-		printf("%c", str[strIndex]);
-	}
-	printf("\n");
-	wCheck=write(sid, str, strlen(str));
-	if (wCheck<0){
-		perror("write\n");
-		exit(-6);
-	}
-	*/
 }
 
 int main(int argc, char *argv[]){
@@ -92,40 +133,12 @@ int main(int argc, char *argv[]){
 		if((client=accept(sockid, (struct sockaddr *) &saddr, &addrlen))<=0){
 			continue;
 		}
-		
-		if (read(client, buf, 1024)<0){
-			perror("read");
-			exit(-4);
-		}
 		data_arr[0].sid=client;
-		data_arr[0].string=buf;
 		m = pthread_create(&threads[0], NULL, Echo, (void *) &data_arr[0]);
 		if (m){
 			perror("Pthread");
 			exit(-5);
 		}
-	/*
-		int m;
-		m=fork();
-		if (m<0){
-			perror("fork");
-			exit(-4);
-		}
-		if (m==0){
-			//Child Process
-			if (read(client, buf, 1024)<0){
-				perror("read");
-				exit(-5);
-			}
-			//close(sockid);
-			echo(client, buf);
-			exit(0);
-		}
-		else{
-			//Parent process
-			close(client);
-		}
-		*/
 	}
 	pthread_exit(NULL); //tk
 	exit(0);

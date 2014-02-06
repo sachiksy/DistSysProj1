@@ -38,20 +38,23 @@ int main(int argc, char *argv[]){
 		exit(3);
 	}
 	
-	cin.getline(buf, 1024);
-	i=write(sock, buf, strlen(buf));
-	if (i<0){
-		perror("write");
-		exit(4);
-	}
+	while(strcmp(buf, "exit")!=0){
+		printf("myftp>");
+		cin.getline(buf, 1024);
+		i=write(sock, buf, strlen(buf));
+		if (i<0){
+			perror("write");
+			exit(4);
+		}
 	
-	i=read(sock, buf, 1024);
-	if (i<0){
-		perror("read");
-		exit(5);
-	}
+		i=read(sock, buf, 1024);
+		if (i<0){
+			perror("read");
+			exit(5);
+		}
 	
-	printf("Server reply: %s", buf);
+		printf("Server reply: %s\n", buf);
+	}
 	
 	close(sock);
 
