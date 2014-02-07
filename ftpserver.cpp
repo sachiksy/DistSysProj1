@@ -25,7 +25,6 @@ void *Echo (void *threadargs){
 	data=(struct thread_data *) threadargs;
 	int sid=data->sid;
 	char str[1024];
-	string boo="";
 	
 	while(strcmp(str, "exit")!=0){
 		memset(str, '\0', 1024);
@@ -34,21 +33,25 @@ void *Echo (void *threadargs){
 			exit(-4);
 		}
 		
-		/*
-		We need to implement a string parser to tokenize commands
-		*/
+		//Tokenize the client's request
+		char *command, *cargs;
+		strcpy(command, str);
+		command = strtok (command," ");
+		if (command != NULL){
+			cargs = strtok (NULL, "\n");
+		}
 		
 		//Switch for the 7 main commands (not including exit). Else is echo
-		if(strcmp(str, "get")==0){
+		if(strcmp(command, "get")==0){
 			printf("Please implement 'get'\n");
 		}
-		else if(strcmp(str, "put")==0){
+		else if(strcmp(command, "put")==0){
 			printf("Please implement 'put'\n");
 		}
-		else if(strcmp(str, "delete")==0){
+		else if(strcmp(command, "delete")==0){
 			printf("Please implement 'delete'\n");
 		}
-		else if(strcmp(str, "ls")==0){
+		else if( (strcmp(command, "ls")==0) && cargs==NULL ){
 			DIR *dir;
 			struct dirent *entry;
 			char cwd[1024];
@@ -70,13 +73,13 @@ void *Echo (void *threadargs){
 				strcpy(str, lsContents.c_str());
 			}
 		}
-		else if(strcmp(str, "cd")==0){
+		else if(strcmp(command, "cd")==0){
 			printf("Please implement 'cd'\n");
 		}
-		else if(strcmp(str, "mkdir")==0){
+		else if(strcmp(command, "mkdir")==0){
 			printf("Please implement 'mkdir'\n");
 		}
-		else if(strcmp(str, "pwd")==0){
+		else if( (strcmp(command, "pwd")==0) && cargs==NULL ){
 			if (getcwd(str, sizeof(str)) == NULL){
 				perror("pwd error");
 			}
