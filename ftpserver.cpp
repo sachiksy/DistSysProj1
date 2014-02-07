@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <unistd.h>
 #include <pthread.h>
 #include <dirent.h>
@@ -8,22 +9,26 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <signal.h>
+using namespace std;
 
 struct thread_data{
 	int sid;
 	//char *string;
 };
 
+char homeDir[1024];
+
 //Prints the message from the clients and writes the same message back to the client
-void *Echo (void *threadargs){ //tk (int sid, char *str)
+void *Echo (void *threadargs){
 	int wCheck;
 	struct thread_data *data;
 	data=(struct thread_data *) threadargs;
 	int sid=data->sid;
 	char str[1024];
+	string boo="";
 	
 	while(strcmp(str, "exit")!=0){
-		memset(str, '\0', sizeof(str));
+		memset(str, '\0', 1024);
 		if (read(sid, str, 1024)<0){
 			perror("read");
 			exit(-4);
@@ -44,21 +49,26 @@ void *Echo (void *threadargs){ //tk (int sid, char *str)
 			printf("Please implement 'delete'\n");
 		}
 		else if(strcmp(str, "ls")==0){
-			printf("Please implement 'ls'\n");
-			/*
 			DIR *dir;
 			struct dirent *entry;
-
-			if ((dir = opendir("/")) == NULL)
-				perror("opendir() error");
+			char cwd[1024];
+			string lsContents;
+			if (getcwd(cwd, sizeof(cwd)) == NULL){
+				perror("Couldn't get current working directory");
+			}
+			
+			if ((dir = opendir(cwd)) == NULL)
+				perror("Opening the directory");
 			else {
 				puts("contents of root:");
 				while ((entry = readdir(dir)) != NULL){
 					printf("  %s\n", entry->d_name);
+					lsContents.append(entry->d_name);
+					lsContents.append("\n");
 				}
 				closedir(dir);
+				strcpy(str, lsContents.c_str());
 			}
-			*/
 		}
 		else if(strcmp(str, "cd")==0){
 			printf("Please implement 'cd'\n");
@@ -68,7 +78,7 @@ void *Echo (void *threadargs){ //tk (int sid, char *str)
 		}
 		else if(strcmp(str, "pwd")==0){
 			if (getcwd(str, sizeof(str)) == NULL){
-				perror("getcwd() error");
+				perror("pwd error");
 			}
 			printf("CWD is: %s\n", str);
 		}
@@ -77,7 +87,7 @@ void *Echo (void *threadargs){ //tk (int sid, char *str)
 		}
 		
 		//write back to the client
-		wCheck=write(sid, str, strlen(str));
+		wCheck=write(sid, str, 1024);
 		if (wCheck<0){
 			perror("write\n");
 			exit(-7);
@@ -122,6 +132,11 @@ int main(int argc, char *argv[]){
 	if(bind(sockid, (struct sockaddr *) &saddr, sizeof(saddr))<0){
 		perror("bind");
 		exit(-3);
+	}
+	
+	//initialize home directory
+	if (getcwd(homeDir, sizeof(homeDir)) == NULL){
+		perror("Home Directory init error");
 	}
 	
 	listen(sockid, 0);
