@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <sys/types.h> 
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -34,7 +35,9 @@ void *Echo (void *threadargs){
 		}
 		
 		//Tokenize the client's request
-		char *command, *cargs;
+		
+		char *command=(char *) malloc(1024);
+		char *cargs=(char *) malloc(1024);
 		strcpy(command, str);
 		command = strtok (command," ");
 		if (command != NULL){
@@ -55,7 +58,7 @@ void *Echo (void *threadargs){
 			DIR *dir;
 			struct dirent *entry;
 			char cwd[1024];
-			string lsContents;
+			char lsContents[1024]="";
 			if (getcwd(cwd, sizeof(cwd)) == NULL){
 				perror("Couldn't get current working directory");
 			}
@@ -66,27 +69,43 @@ void *Echo (void *threadargs){
 				puts("contents of root:");
 				while ((entry = readdir(dir)) != NULL){
 					printf("  %s\n", entry->d_name);
-					lsContents.append(entry->d_name);
-					lsContents.append("\n");
+					strcat(lsContents, entry->d_name);
+					strcat(lsContents, "\n");
 				}
 				closedir(dir);
-				strcpy(str, lsContents.c_str());
+				strcpy(str, lsContents);
 			}
 		}
-		else if(strcmp(command, "cd")==0){
+		else if(strcmp(str, "cd")==0){
 			printf("Please implement 'cd'\n");
 		}
-		else if(strcmp(command, "mkdir")==0){
-			printf("Please implement 'mkdir'\n");
+		else if(strcmp(command, "mkdir")==0 ){
+			if (cargs==NULL){
+				strcpy(str, "mkdir error: must have 1 argument\n");
+			}
+			else{
+				char *format=(char *) malloc(1024);
+				format=cargs;
+				if (mkdir(cargs, S_IRWXU|S_IRGRP|S_IXGRP) != 0){
+					perror("mkdir() error");
+					strcpy(str, "mkdir failed to execute\n");
+				}
+				else{
+					strcpy(str, cargs);
+					strcat(str, " directory successfully created\n");
+				}
+			}
+			
 		}
-		else if( (strcmp(command, "pwd")==0) && cargs==NULL ){
+		else if( (strcmp(str, "pwd")==0) && cargs==NULL ){
 			if (getcwd(str, sizeof(str)) == NULL){
 				perror("pwd error");
 			}
 			printf("CWD is: %s\n", str);
 		}
+		
 		else{
-			printf("Echo: %s\n", str);
+			printf("Unrecognised command: %s\n", str);
 		}
 		
 		//write back to the client
@@ -157,6 +176,7 @@ int main(int argc, char *argv[]){
 			perror("Pthread");
 			exit(-5);
 		}
+		//printf("Thread quit!\n");
 	}
 	pthread_exit(NULL); //tk
 	exit(0);

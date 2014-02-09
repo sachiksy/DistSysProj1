@@ -8,11 +8,9 @@ Server and client both loop properly. exit and pwd work (maybe need an ignore ca
 Stubs catch all other functions.
 
 To do:
-1). Tokenize user input in void* echo function for args to cd, get, put, delete, mkdir. strtok() should work.
-2). Implement ls (commented-out code has been inserted but neither tested nor refined)
-3). Implement cd
-4). Implement delete
-5). Implement mkdir
-6). Implement get
-7). Implement put
-8). Maybe implement data socket for get and put?
+1). Implement cd
+2). Implement delete
+3). Implement get
+4). Implement put
+5). Implement data socket for get and put
+6). Change socket method from IP address to hostname
