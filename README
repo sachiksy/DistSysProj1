@@ -10,7 +10,7 @@ Stubs catch all other functions. User input tokenized on two character pointers 
 To do:
 1). Implement cd
 2). Implement delete
-3). Implement mkdir
-4). Implement get
-5). Implement put
-6). Maybe implement data socket for get and put?
+3). Implement get
+4). Implement put
+5). Implement data socket for get and put
+6). Change socket method from IP address to hostname
