@@ -4,8 +4,8 @@ DistSysProj1
 Simple FTP Server and Client: Project 1 for Distributed Systems
 
 Added an echo server and echo client. Echo server now runs on a thread.
-Server and client both loop properly. exit and pwd work (maybe need an ignore case function?).
-Stubs catch all other functions.
+Server and client both loop properly. exit, pwd, and ls work (maybe need an ignore case function?).
+Stubs catch all other functions. User input tokenized on two character pointers named "command" and "cargs."
 
 To do:
 1). Implement cd
