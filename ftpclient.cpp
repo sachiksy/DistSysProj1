@@ -10,15 +10,19 @@
 #include <sys/uio.h>
 #include <iostream>
 #include <netdb.h>
+#include <fcntl.h>
 
 using namespace std;
 
 #define BUFFER 1024
 
+const char eof[] = "EOF";
+
 int main(int argc, char *argv[]){
 	int sock, i;
 	struct addrinfo hints, *results, *j;
 	char buf[BUFFER];
+	//char bloop[256];
 	
 	//proper command args
 	if (argc != 3){
@@ -57,22 +61,101 @@ int main(int argc, char *argv[]){
 	}
 	
 	freeaddrinfo(results);
-	
+
+	//user input handling
 	while(strcmp(buf, "exit")!=0){
-		printf("myftp>");
+		printf("myftp> ");
 		cin.getline(buf, BUFFER);
-		i=write(sock, buf, strlen(buf));
-		if (i<0){
-			perror("write");
-			exit(4);
+		
+		// RECV/SEND for command: GET
+		if (strstr(buf, "get")) {
+			//send get <filename> to server
+			i=write(sock, buf, strlen(buf));
+			if (i<0){
+				perror("write");
+				exit(4);
+			}
+
+			//recv File status
+			memset(buf, '\0', BUFFER);
+			if (recv(sock, buf, BUFFER, 0) < 0){
+				perror("error receiving file status from server");
+				exit(EXIT_FAILURE);
+			}
+			printf("client received %s\n", buf);
+			
+			//file does not exist, print to user, loop back to prompt
+			if (strstr(buf, "NULL")) {
+				printf("Sorry, the file you wanted does not exist.\n");
+			}
+			
+			//file does exist, create data socket/bind/listen/accept, send connection status
+			else {
+				printf("client knows %s EXISTS\n", buf);
+				
+				size_t size;
+				char data[BUFFER];
+				memset(data, 0, sizeof(data));
+				//overwrite existing file or create new file
+				FILE* doc = fopen(buf, "wb");
+				
+				char *openfile;
+				//cannot open file to write
+				if (doc == NULL) {
+					openfile = "CANT";
+					//send file status, end
+					if (send(sock, buf, sizeof(buf), 0) < 0) {
+						perror("Cannot send file opening status to server\n");
+						close(sock);
+						exit(EXIT_FAILURE);
+					}
+					perror("Cannot open file to be written\n");
+					close(sock);
+					exit(EXIT_FAILURE);
+				}
+				//we are ready to receive
+				else {
+					openfile = "GOOD";
+					//send GOOD TO GO, let's start sending that file
+					if (send(sock, buf, sizeof(buf), 0) < 0) {
+						perror("Cannot send ready to receive clearance to server\n");
+						close(sock);
+						exit(EXIT_FAILURE);
+					}
+					
+					printf("opened file to write\n");
+					while ((size = recv(sock, data, sizeof(data), 0)) > 0) {
+					printf("receiving...\n");
+						//if EOF, break
+						if ((strcmp(data, eof)) == 0) {
+							printf("end of file matey\n");
+							break;
+						}
+						fwrite(data, 1, BUFFER, doc);
+					}
+					if (size < 0) {
+						perror("problem receiving file from server");
+						exit(EXIT_FAILURE);
+					}
+					printf("closing file\n");
+					fclose(doc);
+				}
+			}
 		}
-	
-		i=read(sock, buf, BUFFER);
-		if (i<0){
-			perror("read");
-			exit(5);
+		// WRITE/READ for commands: LS, PWD
+		else {
+			i=write(sock, buf, strlen(buf));
+			if (i<0){
+				perror("write");
+				exit(4);
+			}
+
+			i=read(sock, buf, BUFFER);
+			if (i<0){
+				perror("read");
+				exit(5);
+			}
 		}
-	
 		printf("Server reply: %s\n", buf);
 	}
 	
