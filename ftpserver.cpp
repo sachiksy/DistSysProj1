@@ -26,6 +26,8 @@ void *Echo (void *threadargs){
 	data=(struct thread_data *) threadargs;
 	int sid=data->sid;
 	char str[1024];
+	char cwd[1024];
+	strcpy(cwd, homeDir);
 	
 	while(strcmp(str, "exit")!=0){
 		memset(str, '\0', 1024);
@@ -57,16 +59,17 @@ void *Echo (void *threadargs){
 		else if( (strcmp(command, "ls")==0) && cargs==NULL ){
 			DIR *dir;
 			struct dirent *entry;
-			char cwd[1024];
 			char lsContents[1024]="";
 			if (getcwd(cwd, sizeof(cwd)) == NULL){
 				perror("Couldn't get current working directory");
+				strcpy(str, "Couldn't get current working directory\n");
 			}
-			
-			if ((dir = opendir(cwd)) == NULL)
+			else if ((dir = opendir(cwd)) == NULL){
 				perror("Opening the directory");
+				strcpy(str, "Failed to open directory object\n");
+			}
 			else {
-				puts("contents of root:");
+				printf("contents of root:\n");
 				while ((entry = readdir(dir)) != NULL){
 					printf("  %s\n", entry->d_name);
 					strcat(lsContents, entry->d_name);
@@ -76,16 +79,24 @@ void *Echo (void *threadargs){
 				strcpy(str, lsContents);
 			}
 		}
-		else if(strcmp(str, "cd")==0){
-			printf("Please implement 'cd'\n");
+		else if(strcmp(command, "cd")==0){
+			if (cargs==NULL){
+				printf("cd missing arguments\n");
+				strcpy(str, "cd error: must have 1 argument\n");
+			}
+			else if (chdir(cargs)!=0){
+				perror("chdir() error");
+				strcpy(str, "Failed to change directory\n");
+			}
+			else{
+				strcpy(str, "Successfully changed the working directory!\n");
+			}
 		}
 		else if(strcmp(command, "mkdir")==0 ){
 			if (cargs==NULL){
 				strcpy(str, "mkdir error: must have 1 argument\n");
 			}
 			else{
-				char *format=(char *) malloc(1024);
-				format=cargs;
 				if (mkdir(cargs, S_IRWXU|S_IRGRP|S_IXGRP) != 0){
 					perror("mkdir() error");
 					strcpy(str, "mkdir failed to execute\n");
@@ -100,8 +111,11 @@ void *Echo (void *threadargs){
 		else if( (strcmp(str, "pwd")==0) && cargs==NULL ){
 			if (getcwd(str, sizeof(str)) == NULL){
 				perror("pwd error");
+				strcpy(str, "pwd failed\n");
 			}
-			printf("CWD is: %s\n", str);
+			else{
+				printf("CWD is: %s\n", str);
+			}
 		}
 		
 		else{
