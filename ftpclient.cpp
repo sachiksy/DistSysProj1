@@ -8,46 +8,66 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
+#include <iostream>
+#include <netdb.h>
+
 using namespace std;
 
+#define BUFFER 1024
+
 int main(int argc, char *argv[]){
-
 	int sock, i;
-	struct sockaddr_in saddr;
-	char buf[1024];
-	struct in_addr inp;
-
-	if (argc!=3){
-		printf("Usage: need a server IP address and server port number\n");
-		exit(1);
+	struct addrinfo hints, *results, *j;
+	char buf[BUFFER];
+	
+	//proper command args
+	if (argc != 3){
+		printf("Usage: %s <server hostname> <port number>\n", argv[0]);
+		exit(EXIT_FAILURE);
 	}
 	
-	inet_aton(argv[1], &inp);
-	saddr.sin_family = AF_INET;
-	saddr.sin_addr.s_addr = inp.s_addr;
-	saddr.sin_port = htons(atoi(argv[2]));
+	//obtain address(es) matching hostname and port number
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;			//IPv4
+	hints.ai_socktype = SOCK_STREAM;	//TCP socket
 	
-	sock=socket(PF_INET, SOCK_STREAM, 0);
-	if (sock<0){
-		perror("socket");
-		exit(2);
+	//getaddrinfo(hostname, port number, address specifications, start of linked list of address structs)
+	if (getaddrinfo(argv[1], argv[2], &hints, &results) < 0) {
+		perror("Cannot resolve the address");
+		exit(EXIT_FAILURE);
 	}
 	
-	if (connect(sock, (const struct sockaddr *)&saddr, sizeof(saddr))<0){
-		perror("connection");
-		exit(3);
+	//try each address until successful connection
+	for (j = results; j != NULL; j = j->ai_next) {
+		//if socket creation fail, continue
+		if ((sock = socket(j->ai_family, j->ai_socktype, j->ai_protocol)) < 0) {
+			continue;
+		}
+		//connection success, break
+		if (connect(sock, j->ai_addr, j->ai_addrlen) != -1) {
+			break;
+		}
+		
+		close(sock);
 	}
+	//no successful address
+	if (j == NULL) {
+		perror("Cannot connect\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	freeaddrinfo(results);
 	
 	while(strcmp(buf, "exit")!=0){
 		printf("myftp>");
-		cin.getline(buf, 1024);
+		cin.getline(buf, BUFFER);
 		i=write(sock, buf, strlen(buf));
 		if (i<0){
 			perror("write");
 			exit(4);
 		}
 	
-		i=read(sock, buf, 1024);
+		i=read(sock, buf, BUFFER);
 		if (i<0){
 			perror("read");
 			exit(5);
