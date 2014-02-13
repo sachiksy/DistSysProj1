@@ -39,16 +39,16 @@ void get_file(char* filename, int sockid){
 			perror("error sending file status to client");
 			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (send(sockid, status, (int)strlen(status), 0) < 0)
 		return;
-	}
+	} //if (doc == NULL)
 	//file EXISTS, send file status
 	else{
 		printf("%s EXISTS\n", filename);
 		if (send(sockid, filename, (int)strlen(filename), 0) < 0){
 			perror("error sending file status to client");
 			exit(EXIT_FAILURE);
-		}
+		} //if (send(sockid, filename, (int)strlen(filename), 0) < 0)
 		
 		char data[1024];
 		//failure to receive client file opening status
@@ -56,13 +56,13 @@ void get_file(char* filename, int sockid){
 			perror("Error receiving file opening status from server");
 			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (recv(sockid, data, sizeof(data), 0) < 0)
 		//client sent failure to open file
 		if (strstr(data, "CANT")) {
 			perror("Client was not able to open file to be ready for receiving\n");
 			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (strstr(data, "CANT"))
 		else{
 			size_t size;
 			memset(data, '\0', sizeof(data));
@@ -90,9 +90,9 @@ void get_file(char* filename, int sockid){
 			
 			//close file
 			fclose(doc);
-		}
-	}
-}
+		} //else
+	} //else
+} //void get_file(char* filename, int sockid)
 
 //Prints the message from the clients and writes the same message back to the client
 void *Echo (void *threadargs){
@@ -124,14 +124,27 @@ void *Echo (void *threadargs){
 		if(strcmp(command, "get")==0){
 			printf("Please implement 'get'\n");
 			get_file(cargs, sid);
-		}
+		} //get <filename> request
 		else {
 			if(strcmp(command, "put")==0){
 				printf("Please implement 'put'\n");
-			}
+			} //put <filename> request
 			else if(strcmp(command, "delete")==0){
-				printf("Please implement 'delete'\n");
-			}
+				if (cargs==NULL){
+					strcpy(str, "delete error: must have 1 argument\n");
+				}
+				else{
+					if (remove(cargs)!=0){
+						perror("Error deleting file");
+						strcpy(str, "Couldn't delete the file: ");
+						strcat(str, cargs);
+					}
+					else{
+						strcpy(str, cargs);
+						strcat(str, " successfully deleted!\n");
+					}
+				}
+			} //delete <filename> request
 			else if( (strcmp(command, "ls")==0) && cargs==NULL ){
 				DIR *dir;
 				struct dirent *entry;
@@ -154,7 +167,7 @@ void *Echo (void *threadargs){
 					closedir(dir);
 					strcpy(str, lsContents);
 				}
-			}
+			} //ls request
 			else if(strcmp(command, "cd")==0){
 				if (cargs==NULL){
 					printf("cd missing arguments\n");
@@ -167,7 +180,7 @@ void *Echo (void *threadargs){
 				else{
 					strcpy(str, "Successfully changed the working directory!\n");
 				}
-			}
+			} //cd request
 			else if(strcmp(command, "mkdir")==0 ){
 				if (cargs==NULL){
 					strcpy(str, "mkdir error: must have 1 argument\n");
@@ -175,7 +188,8 @@ void *Echo (void *threadargs){
 				else{
 					if (mkdir(cargs, S_IRWXU|S_IRGRP|S_IXGRP) != 0){
 						perror("mkdir() error");
-						strcpy(str, "mkdir failed to execute\n");
+						strcpy(str, "Failed to create the directory: ");
+						strcat(str, cargs);
 					}
 					else{
 						strcpy(str, cargs);
@@ -183,7 +197,7 @@ void *Echo (void *threadargs){
 					}
 				}
 				
-			}
+			} //mkdir <directory name> request
 			else if( (strcmp(str, "pwd")==0) && cargs==NULL ){
 				if (getcwd(str, sizeof(str)) == NULL){
 					perror("pwd error");
@@ -192,20 +206,20 @@ void *Echo (void *threadargs){
 				else{
 					printf("CWD is: %s\n", str);
 				}
-			}
+			} //pwd request
 			
 			else{
 				printf("Unrecognised command: %s\n", str);
-			}
+			} //unrecognized request
 			
 			//write back to the client
 			wCheck=write(sid, str, BUFFER);
 			if (wCheck<0){
 				perror("write\n");
 				exit(-7);
-			}
-		}
-	}
+			} //if (wCheck<0)
+		} //else
+	} //while(strcmp(str, "exit")!=0)
 	return NULL;
 }
 

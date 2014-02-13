@@ -8,5 +8,4 @@ Server and client both loop properly. exit, pwd, and ls work (maybe need an igno
 Stubs catch all other functions. User input tokenized on two character pointers named "command" and "cargs."
 
 To do:
-1). Implement delete
-2). Implement put
+1). Implement put
