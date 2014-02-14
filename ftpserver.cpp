@@ -25,9 +25,6 @@ struct thread_data{
 char homeDir[BUFFER];
 
 void get_file(char* filename, int sockid){
-	printf("sock ID is %i\n", sockid);
-	printf("filename is %s\n", filename);
-	
 	//open file and send file status to client
 	char *status = "NULL";
 	FILE* doc = fopen(filename, "rb");
@@ -36,61 +33,128 @@ void get_file(char* filename, int sockid){
 	if (doc == NULL) {
 		printf("%s does NOT exist\n", filename);
 		if (send(sockid, status, (int)strlen(status), 0) < 0){
-			perror("error sending file status to client");
+			perror("ERROR: Failed to send file status to client.\n");
 			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (send(sockid, status, (int)strlen(status), 0) < 0)
 		return;
-	}
+	} //if (doc == NULL)
 	//file EXISTS, send file status
 	else{
-		printf("%s EXISTS\n", filename);
 		if (send(sockid, filename, (int)strlen(filename), 0) < 0){
-			perror("error sending file status to client");
+			perror("ERROR: Failed to send file status to client");
+			fclose(doc);
+			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (send(sockid, filename, (int)strlen(filename), 0) < 0)
 		
 		char data[1024];
 		//failure to receive client file opening status
 		if (recv(sockid, data, sizeof(data), 0) < 0){
-			perror("Error receiving file opening status from server");
+			perror("ERROR: Failed to receive file opening status from server.\n");
+			fclose(doc);
 			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (recv(sockid, data, sizeof(data), 0) < 0)
 		//client sent failure to open file
 		if (strstr(data, "CANT")) {
-			perror("Client was not able to open file to be ready for receiving\n");
+			perror("ERROR: Client was not able to open file to be ready for receiving.\n");
+			fclose(doc);
 			close(sockid);
 			exit(EXIT_FAILURE);
-		}
+		} //if (strstr(data, "CANT"))
 		else{
 			size_t size;
-			memset(data, '\0', sizeof(data));
+			memset(data, '\0', BUFFER);
 			
-			printf("sending file...\n");
 			do {
 				size = fread(data, 1, sizeof(data), doc);
-				printf("The bytes read are %s\n", data);
 				
 				if (size < 0) {
-					perror("cannot fread() file");
+					perror("ERROR: Cannot fread() file.\n");
+					fclose(doc);
+					close(sockid);
 					exit(EXIT_FAILURE);
 				}
 				
 				//send
 				if (send(sockid, data, size, 0) < 0) {
-					perror("cannot send file");
+					perror("ERROR: Cannot send file.\n");
+					fclose(doc);
+					close(sockid);
 					exit(EXIT_FAILURE);
 				}
 			} while (size > 0);
-			printf("DONE sending\n");
 			
 			//send end of file
-			send(sockid, eof, sizeof(eof), 0);
+			if (send(sockid, eof, sizeof(eof), 0) < 0) {
+				perror("ERROR: Cannot send 'end of file' signal to client.\n");
+				fclose(doc);
+				close(sockid);
+				exit(EXIT_FAILURE);
+			}
 			
 			//close file
 			fclose(doc);
+		} //else
+	} //else
+} //void get_file(char* filename, int sockid)
+
+void put_file(char* filename, int sockid){
+	char buf[BUFFER];
+	memset(buf, '\0', BUFFER);
+	
+	//recv File status = exist || does not exist
+	if (recv(sockid, buf, BUFFER, 0) < 0) {
+		perror("ERROR: Failed to receive file status from client.\n");
+		close(sockid);
+		exit(EXIT_FAILURE);
+	}
+	
+	//file DOES NOT exist, print to user, end function, back to parsing more commands
+	if (strstr(buf, "NULL")) {
+		printf("The file DOES NOT EXIST in the client's directory.\n");
+		return;
+	}
+	//file EXISTs...
+	else {
+		size_t size;
+		char data[BUFFER];
+		memset(data, '\0', BUFFER);
+		//will open no matter what, file is open for writing/receiving
+		FILE* doc = fopen(filename, "wb");
+		
+		//send GOOD TO GO, let's start sending that file client
+		//	this has more to do with BLOCKing the client so that the server can start
+		//	receiving before the client starts sending the file
+		if (send(sockid, buf, sizeof(buf), 0) < 0) {
+			perror("ERROR: Cannot send ready to receive clearance to client.\n");
+			fclose(doc);
+			close(sockid);
+			exit(EXIT_FAILURE);
 		}
+		
+		//start receiving file
+		while ((size = recv(sockid, data, sizeof(data), 0)) > 0) {
+			printf("receiving...\n");
+			//if EOF, break
+			if ((strcmp(data, eof)) == 0) {
+				printf("received EOF\n");
+				break;
+			}
+			fwrite(data, 1, BUFFER, doc);
+		}
+		
+		//recv error
+		if (size < 0) {
+			perror("ERROR: Problems receiving file from client.\n");
+			fclose(doc);
+			close(sockid);
+			exit(EXIT_FAILURE);
+		}
+		
+		fclose(doc);
+		printf("%s received from client local directory to server remote directory.\n", filename);
 	}
 }
 
@@ -121,17 +185,29 @@ void *Echo (void *threadargs){
 		}
 		
 		//Switch for the 7 main commands (not including exit). Else is echo
-		if(strcmp(command, "get")==0){
-			printf("Please implement 'get'\n");
+		if(strcmp(command, "get")==0) {
 			get_file(cargs, sid);
+		} //get <filename> request
+		else if (strcmp(command, "put") == 0) {
+			put_file(cargs, sid);
 		}
 		else {
-			if(strcmp(command, "put")==0){
-				printf("Please implement 'put'\n");
-			}
-			else if(strcmp(command, "delete")==0){
-				printf("Please implement 'delete'\n");
-			}
+			if(strcmp(command, "delete")==0){
+				if (cargs==NULL){
+					strcpy(str, "delete error: must have 1 argument\n");
+				}
+				else{
+					if (remove(cargs)!=0){
+						perror("Error deleting file");
+						strcpy(str, "Couldn't delete the file: ");
+						strcat(str, cargs);
+					}
+					else{
+						strcpy(str, cargs);
+						strcat(str, " successfully deleted!\n");
+					}
+				}
+			} //delete <filename> request
 			else if( (strcmp(command, "ls")==0) && cargs==NULL ){
 				DIR *dir;
 				struct dirent *entry;
@@ -154,7 +230,7 @@ void *Echo (void *threadargs){
 					closedir(dir);
 					strcpy(str, lsContents);
 				}
-			}
+			} //ls request
 			else if(strcmp(command, "cd")==0){
 				if (cargs==NULL){
 					printf("cd missing arguments\n");
@@ -167,7 +243,7 @@ void *Echo (void *threadargs){
 				else{
 					strcpy(str, "Successfully changed the working directory!\n");
 				}
-			}
+			} //cd request
 			else if(strcmp(command, "mkdir")==0 ){
 				if (cargs==NULL){
 					strcpy(str, "mkdir error: must have 1 argument\n");
@@ -175,7 +251,8 @@ void *Echo (void *threadargs){
 				else{
 					if (mkdir(cargs, S_IRWXU|S_IRGRP|S_IXGRP) != 0){
 						perror("mkdir() error");
-						strcpy(str, "mkdir failed to execute\n");
+						strcpy(str, "Failed to create the directory: ");
+						strcat(str, cargs);
 					}
 					else{
 						strcpy(str, cargs);
@@ -183,7 +260,7 @@ void *Echo (void *threadargs){
 					}
 				}
 				
-			}
+			} //mkdir <directory name> request
 			else if( (strcmp(str, "pwd")==0) && cargs==NULL ){
 				if (getcwd(str, sizeof(str)) == NULL){
 					perror("pwd error");
@@ -192,20 +269,20 @@ void *Echo (void *threadargs){
 				else{
 					printf("CWD is: %s\n", str);
 				}
-			}
+			} //pwd request
 			
 			else{
 				printf("Unrecognised command: %s\n", str);
-			}
+			} //unrecognized request
 			
 			//write back to the client
 			wCheck=write(sid, str, BUFFER);
 			if (wCheck<0){
 				perror("write\n");
 				exit(-7);
-			}
-		}
-	}
+			} //if (wCheck<0)
+		} //else
+	} //while(strcmp(str, "exit")!=0)
 	return NULL;
 }
 
@@ -280,12 +357,12 @@ int main(int argc, char *argv[]){
 	unsigned int addrlen = sizeof(saddr);
 	while (1){
 		//accept and create a separate socket for client(s)
-		printf("trying to connect\n");
+		//printf("trying to connect\n");
 		if ((client=accept(sockid, (struct sockaddr *) &saddr, &addrlen)) < 0) {
 			perror("Cannot open client socket\n");
 			exit(EXIT_FAILURE);
 		}
-		printf("connected\n");
+		//printf("connected\n");
 		
 		data_arr[0].sid=client;
 		m = pthread_create(&threads[0], NULL, Echo, (void *) &data_arr[0]);
