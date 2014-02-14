@@ -3,14 +3,6 @@ DistSysProj1
 
 Simple FTP Server and Client: Project 1 for Distributed Systems
 
-Added an echo server and echo client. Echo server now runs on a thread.
-Server and client both loop properly. exit, pwd, and ls work (maybe need an ignore case function?).
-Stubs catch all other functions. User input tokenized on two character pointers named "command" and "cargs."
-
-To do:
-1). Implement cd
-2). Implement delete
-3). Implement get
-4). Implement put
-5). Implement data socket for get and put
-6). Change socket method from IP address to hostname
+To Do:
+1). clean house in server when "quit"
+2). forbid cd .. when in homeDir
