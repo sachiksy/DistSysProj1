@@ -178,7 +178,6 @@ void *Echo (void *threadargs){
 		//Tokenize the client's request
 		char *command=(char *) malloc(BUFFER);
 		char *cargs=(char *) malloc(BUFFER);
-		char *xargs=(char *) malloc(BUFFER);
 		strcpy(command, str);
 		command = strtok (command," ");
 		if (command != NULL){
