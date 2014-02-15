@@ -48,7 +48,7 @@ void get_file(char* filename, int sockid){
 			exit(EXIT_FAILURE);
 		} //if (send(sockid, filename, (int)strlen(filename), 0) < 0)
 		
-		char data[1024];
+		char data[BUFFER];
 		//failure to receive client file opening status
 		if (recv(sockid, data, sizeof(data), 0) < 0){
 			perror("ERROR: Failed to receive file opening status from server.\n");
@@ -168,7 +168,7 @@ void *Echo (void *threadargs){
 	char cwd[BUFFER];
 	strcpy(cwd, homeDir);
 	
-	while(strcmp(str, "exit")!=0){
+	while(strcmp(str, "quit")!=0){
 		memset(str, '\0', BUFFER);
 		if (read(sid, str, BUFFER)<0){
 			perror("read");
@@ -271,7 +271,7 @@ void *Echo (void *threadargs){
 				}
 			} //pwd request
 			
-			else if ( (strcmp(str, "exit")==0) && cargs==NULL ){
+			else if ( (strcmp(str, "quit")==0) && cargs==NULL ){
 				printf("Client has quit\n");
 			} //quit request
 			
