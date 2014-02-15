@@ -17,6 +17,82 @@ using namespace std;
 
 const char eof[] = "EOF";
 
+void put_file(char* fname, int client_id) {
+	//open file and send file status to server
+	char *stats = "NULL";
+	FILE* doc = fopen(fname, "rb");		//rb to check b/c with "r", file must exist or null
+	
+	//file DOES NOT exist, send file status, end function, return to processing user input
+	if (doc == NULL) {
+		//send file DOES NOT EXIST status
+		if (send(client_id, stats, (int)strlen(stats), 0) < 0) {
+			perror("ERROR: Failed to send file status to server.\n");
+			close(client_id);
+			exit(EXIT_FAILURE);
+		}
+		printf("%s DOES NOT EXIST in the LOCAL directory.\n", fname);
+		printf("Cannot perform PUT <%s>.\n", fname);
+		return;
+	}
+	//file EXISTs...
+	else {
+		printf("%s EXISTs in LOCAL directory.\n", fname);
+		//send file EXISTs status
+		if (send(client_id, fname, (int)strlen(fname), 0) < 0) {
+			perror("ERROR: Failure to send file status to server.\n");
+			fclose(doc);
+			close(client_id);
+			exit(EXIT_FAILURE);
+		}
+		
+		char data[BUFFER];
+		
+		//receive GOOD TO GO signal
+		if (recv(client_id, data, sizeof(data), 0) < 0) {
+			perror("ERROR: Problems receiving GOOD TO GO signal.\n");
+			fclose(doc);
+			close(client_id);
+			exit(EXIT_FAILURE);
+		}
+		
+		size_t size;
+		memset(data, '\0', BUFFER);
+		
+		//reading the file and sending it bytes to server
+		do {
+			size = fread(data, 1, sizeof(data), doc);
+			printf("The bytes read are %s\n", data);
+			
+			//Problems with fread()
+			if (size < 0) {
+				perror("ERROR: Problems fread()ing file.\n");
+				fclose(doc);
+				close(client_id);
+				exit(EXIT_FAILURE);
+			}
+			
+			//sending bytes of file to server
+			if (send(client_id, data, size, 0) < 0) {
+				perror("ERROR: Cannot send file to server.\n");
+				fclose(doc);
+				close(client_id);
+				exit(EXIT_FAILURE);
+			}
+		} while (size > 0);
+		printf("DONE sending\n");
+		
+		//send EOF signal
+		if (send(client_id, eof, sizeof(eof), 0) < 0) {
+			perror("ERROR: Cannot send END OF FILE signal to server.\n");
+			fclose(doc);
+			close(client_id);
+			exit(EXIT_FAILURE);
+		}
+		
+		fclose(doc);
+	}
+}
+
 int main(int argc, char *argv[]){
 	int sock, i;
 	//struct sockaddr_in saddr;
@@ -53,7 +129,7 @@ int main(int argc, char *argv[]){
 	
 	//getaddrinfo(hostname, port number, address specifications, start of linked list of address structs)
 	if (getaddrinfo(argv[1], argv[2], &hints, &results) < 0) {
-		perror("Cannot resolve the address");
+		perror("ERROR: Cannot resolve the address.\n");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -72,7 +148,7 @@ int main(int argc, char *argv[]){
 	}
 	//no successful address
 	if (j == NULL) {
-		perror("Cannot connect\n");
+		perror("ERROR: Cannot connect to address.\n");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -88,30 +164,30 @@ int main(int argc, char *argv[]){
 			//send get <filename> to server
 			i=write(sock, buf, strlen(buf));
 			if (i<0){
-				perror("write");
-				exit(4);
+				perror("ERROR: Failed to write command to server.\n");
+				close(sock);
+				exit(EXIT_FAILURE);
 			} //if (i<0)
 
 			//recv File status
 			memset(buf, '\0', BUFFER);
 			if (recv(sock, buf, BUFFER, 0) < 0){
-				perror("error receiving file status from server");
+				perror("ERROR: Failed to receive file status from server.\n");
+				close(sock);
 				exit(EXIT_FAILURE);
 			} //if (recv(sock, buf, BUFFER, 0) < 0)
-			printf("client received %s\n", buf);
 			
 			//file does not exist, print to user, loop back to prompt
 			if (strstr(buf, "NULL")) {
-				printf("Sorry, the file you wanted does not exist.\n");
+				printf("Sorry, the file you requested DOES NOT EXIST in the REMOTE directory.\n");
+				printf("Cannot perform GET.\n");
 			} //if (strstr(buf, "NULL"))
 			
 			//file does exist, create data socket/bind/listen/accept, send connection status
 			else {
-				printf("client knows %s EXISTS\n", buf);
-				
 				size_t size;
 				char data[BUFFER];
-				memset(data, 0, sizeof(data));
+				memset(data, 0, BUFFER);
 				//overwrite existing file or create new file
 				FILE* doc = fopen(buf, "wb");
 				
@@ -121,11 +197,11 @@ int main(int argc, char *argv[]){
 					openfile = "CANT";
 					//send file status, end
 					if (send(sock, buf, sizeof(buf), 0) < 0) {
-						perror("Cannot send file opening status to server\n");
+						perror("ERROR: Cannot send file opening status to server\n");
 						close(sock);
 						exit(EXIT_FAILURE);
 					} //if (send(sock, buf, sizeof(buf), 0) < 0)
-					perror("Cannot open file to be written\n");
+					perror("ERROR: Cannot open file to be written.\n");
 					close(sock);
 					exit(EXIT_FAILURE);
 				} //if (doc == NULL)
@@ -134,23 +210,23 @@ int main(int argc, char *argv[]){
 					openfile = "GOOD";
 					//send GOOD TO GO, let's start sending that file
 					if (send(sock, buf, sizeof(buf), 0) < 0) {
-						perror("Cannot send ready to receive clearance to server\n");
+						perror("ERROR: Cannot send ready to receive clearance to server.\n");
+						fclose(doc);
 						close(sock);
 						exit(EXIT_FAILURE);
 					} //if (send(sock, buf, sizeof(buf), 0) < 0)
 					
-					printf("opened file to write\n");
 					while ((size = recv(sock, data, sizeof(data), 0)) > 0) {
-					printf("receiving...\n");
 						//if EOF, break
 						if ((strcmp(data, eof)) == 0) {
-							printf("end of file matey\n");
 							break;
 						} //if ((strcmp(data, eof)) == 0)
 						fwrite(data, 1, BUFFER, doc);
 					} //while ((size = recv(sock, data, sizeof(data), 0)) > 0)
 					if (size < 0) {
-						perror("problem receiving file from server");
+						perror("ERROR: Problems receiving file from server.\n");
+						fclose(doc);
+						close(sock);
 						exit(EXIT_FAILURE);
 					} //if (size < 0)
 					printf("closing file\n");
@@ -158,6 +234,26 @@ int main(int argc, char *argv[]){
 				} //else
 			} //else
 		} //if (strstr(buf, "get"))
+		else if (strstr(buf, "put")) {
+			//send put <filename> to server
+			i=write(sock, buf, strlen(buf));
+			if (i<0){
+				perror("ERROR: Failed to write command to server.\n");
+				close(sock);
+				exit(EXIT_FAILURE);
+			} //if (i<0)
+		
+			//tokenize for put_file function
+			char *moby=(char *) malloc(BUFFER);
+			char *dick=(char *) malloc(BUFFER);
+			strcpy(moby, buf);
+			moby = strtok (moby," ");
+			if (moby != NULL){
+				dick = strtok (NULL, "\n");
+			}
+			
+			put_file(dick, sock);
+		}
 		// WRITE/READ for commands: LS, PWD
 		else {
 			i=write(sock, buf, strlen(buf));
