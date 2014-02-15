@@ -158,7 +158,16 @@ int main(int argc, char *argv[]){
 	while(strcmp(buf, "exit") != 0){
 		printf("myftp> ");
 		cin.getline(buf, BUFFER);
-		
+
+		//deal with empty input
+		if (buf[0] == NULL) {
+			continue;
+		}
+		//deal with whitespace
+		if (isspace(buf[0])) {
+			continue;
+		}
+
 		// RECV/SEND for command: GET
 		if (strstr(buf, "get")) {
 			//send get <filename> to server
