@@ -155,7 +155,7 @@ int main(int argc, char *argv[]){
 	freeaddrinfo(results);
 	
 	//user input handling
-	while(strcmp(buf, "exit") != 0){
+	while(strcmp(buf, "quit") != 0){
 		printf("myftp> ");
 		cin.getline(buf, BUFFER);
 
@@ -167,9 +167,19 @@ int main(int argc, char *argv[]){
 		if (isspace(buf[0])) {
 			continue;
 		}
+		
+		//tokenize for STRCMP for GET and PUT, don't want a false positive from STRSTR
+		//	also allows more detailed error messages regarding specific files
+		char *moby=(char *) malloc(BUFFER);
+		char *dick=(char *) malloc(BUFFER);
+		strcpy(moby, buf);
+		moby = strtok (moby," ");
+		if (moby != NULL){
+			dick = strtok (NULL, "\n");
+		}
 
 		// RECV/SEND for command: GET
-		if (strstr(buf, "get")) {
+		if (strcmp(moby, "get") == 0) {
 			//send get <filename> to server
 			i=write(sock, buf, strlen(buf));
 			if (i<0){
@@ -188,8 +198,8 @@ int main(int argc, char *argv[]){
 			
 			//file does not exist, print to user, loop back to prompt
 			if (strstr(buf, "NULL")) {
-				printf("Sorry, the file you requested DOES NOT EXIST in the REMOTE directory.\n");
-				printf("Cannot perform GET.\n");
+				printf("Sorry, the file, %s, you requested DOES NOT EXIST in the REMOTE directory.\n", dick);
+				printf("Cannot perform GET <%s>\n", dick);
 			} //if (strstr(buf, "NULL"))
 			
 			//file does exist, create data socket/bind/listen/accept, send connection status
@@ -243,7 +253,7 @@ int main(int argc, char *argv[]){
 				} //else
 			} //else
 		} //if (strstr(buf, "get"))
-		else if (strstr(buf, "put")) {
+		else if (strcmp(moby, "put") == 0) {
 			//send put <filename> to server
 			i=write(sock, buf, strlen(buf));
 			if (i<0){
@@ -251,15 +261,6 @@ int main(int argc, char *argv[]){
 				close(sock);
 				exit(EXIT_FAILURE);
 			} //if (i<0)
-		
-			//tokenize for put_file function
-			char *moby=(char *) malloc(BUFFER);
-			char *dick=(char *) malloc(BUFFER);
-			strcpy(moby, buf);
-			moby = strtok (moby," ");
-			if (moby != NULL){
-				dick = strtok (NULL, "\n");
-			}
 			
 			put_file(dick, sock);
 		}
