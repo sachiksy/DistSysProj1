@@ -1,11 +1,14 @@
-DistSysProj1
-============
+Nicholas Sobrilsky
+Seong Wang
 
-Simple FTP Server and Client: Project 1 for Distributed Systems
+This project was done in its entirely by Nicholas Sobrilsky and Seong Wang.
+We hereby state that we have not received unauthorized help of any form.
 
-Added an echo server and echo client. Echo server now runs on a thread.
-Server and client both loop properly. exit, pwd, and ls work (maybe need an ignore case function?).
-Stubs catch all other functions. User input tokenized on two character pointers named "command" and "cargs."
+We have included a makefile for ease of compilation and testing.
+The commands are:
+"make prog," which compiles both the server and the client
+"make ser," which executes the server listening on port 1459
+"make cli," which executes the client connecting to cf0.cs.uga.edu on port 1459
+and "make clean," which deletes the compiled server and client
 
-To do:
-1). Implement put
+This code has been tested exclusively on Nike.

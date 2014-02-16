@@ -1,12 +1,12 @@
 prog: ftpclient.cpp ftpserver.cpp
-	g++ ftpserver.cpp -Wall -lpthread -o ftpServer
-	g++ ftpclient.cpp -Wall -o ftpClient
+	g++ ftpserver.cpp -Wall -lpthread -o myftpserver
+	g++ ftpclient.cpp -Wall -o myftp
 	
 ser:
-	./ftpServer 1459
+	./myftpserver 1459
 	
 cli:
-	./ftpClient cf0.cs.uga.edu 1459
+	./myftp cf0.cs.uga.edu 1459
 	
 clean:
-	rm ftpServer ftpClient
+	rm myftpserver myftp

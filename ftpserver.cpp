@@ -178,23 +178,31 @@ void *Echo (void *threadargs){
 		//Tokenize the client's request
 		char *command=(char *) malloc(BUFFER);
 		char *cargs=(char *) malloc(BUFFER);
+		bool extraArgs=false;
 		strcpy(command, str);
 		command = strtok (command," ");
 		if (command != NULL){
-			cargs = strtok (NULL, "\n");
+			cargs = strtok (NULL, " \n");
 		}
+		if (strtok(NULL, " \n")!=NULL){
+			extraArgs=true;
+		}
+		
 		
 		//Switch for the 7 main commands (not including exit). Else is echo
 		if(strcmp(command, "get")==0) {
 			get_file(cargs, sid);
+			
 		} //get <filename> request
 		else if (strcmp(command, "put") == 0) {
 			put_file(cargs, sid);
-		}
+			
+		} //put <filename> request
 		else {
 			if(strcmp(command, "delete")==0){
-				if (cargs==NULL){
-					strcpy(str, "delete error: must have 1 argument\n");
+				if (cargs==NULL || extraArgs){
+					printf("DELETE: Invalid number of arguments\n");
+					strcpy(str, "DELETE error: must have exactly one argument\n");
 				}
 				else{
 					if (remove(cargs)!=0){
@@ -207,34 +215,41 @@ void *Echo (void *threadargs){
 						strcat(str, " successfully deleted!\n");
 					}
 				}
+				
 			} //delete <filename> request
-			else if( (strcmp(command, "ls")==0) && cargs==NULL ){
-				DIR *dir;
-				struct dirent *entry;
-				char lsContents[BUFFER]="\n";
-				if (getcwd(cwd, sizeof(cwd)) == NULL){
-					perror("Couldn't get current working directory");
-					strcpy(str, "Couldn't get current working directory\n");
+			else if( strcmp(command, "ls")==0 ){
+				if (cargs!=NULL){
+					printf("LS: command must not have arguments\n");
+					strcpy(str, "LS error: must have no arguments");
 				}
-				else if ((dir = opendir(cwd)) == NULL){
-					perror("Opening the directory");
-					strcpy(str, "Failed to open directory object\n");
-				}
-				else {
-					printf("contents of root:\n");
-					while ((entry = readdir(dir)) != NULL){
-						printf("  %s\n", entry->d_name);
-						strcat(lsContents, entry->d_name);
-						strcat(lsContents, "\n");
+				else{
+					DIR *dir;
+					struct dirent *entry;
+					char lsContents[BUFFER]="\n";
+					if (getcwd(cwd, sizeof(cwd)) == NULL){
+						perror("Couldn't get current working directory");
+						strcpy(str, "Couldn't get current working directory\n");
 					}
-					closedir(dir);
-					strcpy(str, lsContents);
+					else if ((dir = opendir(cwd)) == NULL){
+						perror("Opening the directory");
+						strcpy(str, "Failed to open directory object\n");
+					}
+					else {
+						while ((entry = readdir(dir)) != NULL){
+							printf("  %s\n", entry->d_name);
+							strcat(lsContents, entry->d_name);
+							strcat(lsContents, "\n");
+						}
+						closedir(dir);
+						strcpy(str, lsContents);
+					}
 				}
+				
 			} //ls request
 			else if(strcmp(command, "cd")==0){
-				if (cargs==NULL){
-					printf("cd missing arguments\n");
-					strcpy(str, "cd error: must have 1 argument\n");
+				if (cargs==NULL || extraArgs){
+					printf("CD: Invalid number of arguments\n");
+					strcpy(str, "CD error: must have exactly one argument\n");
 				}
 				else if (chdir(cargs)!=0){
 					perror("chdir() error");
@@ -243,10 +258,12 @@ void *Echo (void *threadargs){
 				else{
 					strcpy(str, "Successfully changed the working directory!\n");
 				}
+				
 			} //cd request
 			else if(strcmp(command, "mkdir")==0 ){
-				if (cargs==NULL){
-					strcpy(str, "mkdir error: must have 1 argument\n");
+				if (cargs==NULL || extraArgs){
+					printf("MKDIR: Invalid number of arguments\n");
+					strcpy(str, "MKDIR error: must have exactly one argument\n");
 				}
 				else{
 					if (mkdir(cargs, S_IRWXU|S_IRGRP|S_IXGRP) != 0){
@@ -261,18 +278,32 @@ void *Echo (void *threadargs){
 				}
 				
 			} //mkdir <directory name> request
-			else if( (strcmp(str, "pwd")==0) && cargs==NULL ){
-				if (getcwd(str, sizeof(str)) == NULL){
-					perror("pwd error");
-					strcpy(str, "pwd failed\n");
+			else if( strcmp(command, "pwd")==0 ){
+				if (cargs!=NULL){
+					printf("PWD: command must have no arguments\n");
+					strcpy(str, "PWD error: must have no arguments\n");
 				}
 				else{
-					printf("CWD is: %s\n", str);
+					if (getcwd(str, sizeof(str)) == NULL){
+						perror("pwd error");
+						strcpy(str, "pwd failed\n");
+					}
+					else{
+						printf("CWD is: %s\n", str);
+					}
 				}
+				
 			} //pwd request
 			
-			else if ( (strcmp(str, "quit")==0) && cargs==NULL ){
-				printf("Client has quit\n");
+			else if ( strcmp(command, "quit")==0 ){
+				if (cargs!=NULL){
+					printf("QUIT: command must have no arguments\n");
+					strcpy(str, "QUIT error: must have no arguments\n");
+				}
+				else{
+					printf("Client has quit\n");
+				}
+				
 			} //quit request
 			
 			else{

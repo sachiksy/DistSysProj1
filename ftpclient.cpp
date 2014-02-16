@@ -105,22 +105,6 @@ int main(int argc, char *argv[]){
 		printf("Usage: %s <server hostname> <port number>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-	/*
-	inet_aton(argv[1], &inp);
-	saddr.sin_family = AF_INET;
-	saddr.sin_addr.s_addr = inp.s_addr;
-	saddr.sin_port = htons(atoi(argv[2]));
-	
-	sock=socket(PF_INET, SOCK_STREAM, 0);
-	if (sock<0){
-		perror("socket");
-		exit(2);
-	}
-	
-	if (connect(sock, (const struct sockaddr *)&saddr, sizeof(saddr))<0){
-		perror("connection");
-		exit(3);
-	} */
 	
 	//obtain address(es) matching hostname and port number
 	memset(&hints, 0, sizeof(struct addrinfo));
@@ -172,97 +156,113 @@ int main(int argc, char *argv[]){
 		//	also allows more detailed error messages regarding specific files
 		char *moby=(char *) malloc(BUFFER);
 		char *dick=(char *) malloc(BUFFER);
+		bool extraArgs=false;
 		strcpy(moby, buf);
 		moby = strtok (moby," ");
 		if (moby != NULL){
-			dick = strtok (NULL, "\n");
+			dick = strtok (NULL, " \n");
+		}
+		if (strtok(NULL, " \n")!=NULL){
+			extraArgs=true;
 		}
 
 		// RECV/SEND for command: GET
 		if (strcmp(moby, "get") == 0) {
-			//send get <filename> to server
-			i=write(sock, buf, strlen(buf));
-			if (i<0){
-				perror("ERROR: Failed to write command to server.\n");
-				close(sock);
-				exit(EXIT_FAILURE);
-			} //if (i<0)
-
-			//recv File status
-			memset(buf, '\0', BUFFER);
-			if (recv(sock, buf, BUFFER, 0) < 0){
-				perror("ERROR: Failed to receive file status from server.\n");
-				close(sock);
-				exit(EXIT_FAILURE);
-			} //if (recv(sock, buf, BUFFER, 0) < 0)
-			
-			//file does not exist, print to user, loop back to prompt
-			if (strstr(buf, "NULL")) {
-				printf("Sorry, the file, %s, you requested DOES NOT EXIST in the REMOTE directory.\n", dick);
-				printf("Cannot perform GET <%s>\n", dick);
-			} //if (strstr(buf, "NULL"))
-			
-			//file does exist, create data socket/bind/listen/accept, send connection status
-			else {
-				size_t size;
-				char data[BUFFER];
-				memset(data, 0, BUFFER);
-				//overwrite existing file or create new file
-				FILE* doc = fopen(buf, "wb");
-				
-				char *openfile;
-				//cannot open file to write
-				if (doc == NULL) {
-					openfile = "CANT";
-					//send file status, end
-					if (send(sock, buf, sizeof(buf), 0) < 0) {
-						perror("ERROR: Cannot send file opening status to server\n");
-						close(sock);
-						exit(EXIT_FAILURE);
-					} //if (send(sock, buf, sizeof(buf), 0) < 0)
-					perror("ERROR: Cannot open file to be written.\n");
+			if(extraArgs){
+				printf("GET error: must have exactly one argument\n");
+			} //if (extraArgs)
+			else{
+				//send get <filename> to server
+				i=write(sock, buf, strlen(buf));
+				if (i<0){
+					perror("ERROR: Failed to write command to server.\n");
 					close(sock);
 					exit(EXIT_FAILURE);
-				} //if (doc == NULL)
-				//we are ready to receive
+				} //if (i<0)
+
+				//recv File status
+				memset(buf, '\0', BUFFER);
+				if (recv(sock, buf, BUFFER, 0) < 0){
+					perror("ERROR: Failed to receive file status from server.\n");
+					close(sock);
+					exit(EXIT_FAILURE);
+				} //if (recv(sock, buf, BUFFER, 0) < 0)
+				
+				//file does not exist, print to user, loop back to prompt
+				if (strstr(buf, "NULL")) {
+					printf("Sorry, the file, %s, you requested DOES NOT EXIST in the REMOTE directory.\n", dick);
+					printf("Cannot perform GET <%s>\n", dick);
+				} //if (strstr(buf, "NULL"))
+			
+				//file does exist, create data socket/bind/listen/accept, send connection status
 				else {
-					openfile = "GOOD";
-					//send GOOD TO GO, let's start sending that file
-					if (send(sock, buf, sizeof(buf), 0) < 0) {
-						perror("ERROR: Cannot send ready to receive clearance to server.\n");
-						fclose(doc);
-						close(sock);
-						exit(EXIT_FAILURE);
-					} //if (send(sock, buf, sizeof(buf), 0) < 0)
+					size_t size;
+					char data[BUFFER];
+					memset(data, 0, BUFFER);
+					//overwrite existing file or create new file
+					FILE* doc = fopen(buf, "wb");
 					
-					while ((size = recv(sock, data, sizeof(data), 0)) > 0) {
-						//if EOF, break
-						if ((strcmp(data, eof)) == 0) {
-							break;
-						} //if ((strcmp(data, eof)) == 0)
-						fwrite(data, 1, BUFFER, doc);
-					} //while ((size = recv(sock, data, sizeof(data), 0)) > 0)
-					if (size < 0) {
-						perror("ERROR: Problems receiving file from server.\n");
-						fclose(doc);
+					char *openfile;
+					//cannot open file to write
+					if (doc == NULL) {
+						openfile = "CANT";
+						//send file status, end
+						if (send(sock, buf, sizeof(buf), 0) < 0) {
+							perror("ERROR: Cannot send file opening status to server\n");
+							close(sock);
+							exit(EXIT_FAILURE);
+						} //if (send(sock, buf, sizeof(buf), 0) < 0)
+						perror("ERROR: Cannot open file to be written.\n");
 						close(sock);
 						exit(EXIT_FAILURE);
-					} //if (size < 0)
-					printf("closing file\n");
-					fclose(doc);
+					} //if (doc == NULL)
+					//we are ready to receive
+					else {
+						openfile = "GOOD";
+						//send GOOD TO GO, let's start sending that file
+						if (send(sock, buf, sizeof(buf), 0) < 0) {
+							perror("ERROR: Cannot send ready to receive clearance to server.\n");
+							fclose(doc);
+							close(sock);
+							exit(EXIT_FAILURE);
+						} //if (send(sock, buf, sizeof(buf), 0) < 0)
+					
+						while ((size = recv(sock, data, sizeof(data), 0)) > 0) {
+							//if EOF, break
+							if ((strcmp(data, eof)) == 0) {
+								break;
+							} //if ((strcmp(data, eof)) == 0)
+							fwrite(data, 1, BUFFER, doc);
+						} //while ((size = recv(sock, data, sizeof(data), 0)) > 0)
+						if (size < 0) {
+							perror("ERROR: Problems receiving file from server.\n");
+							fclose(doc);
+							close(sock);
+							exit(EXIT_FAILURE);
+						} //if (size < 0)
+						printf("closing file\n");
+						fclose(doc);
+					} //else
 				} //else
 			} //else
+
 		} //if (strstr(buf, "get"))
 		else if (strcmp(moby, "put") == 0) {
-			//send put <filename> to server
-			i=write(sock, buf, strlen(buf));
-			if (i<0){
-				perror("ERROR: Failed to write command to server.\n");
-				close(sock);
-				exit(EXIT_FAILURE);
-			} //if (i<0)
+			if(extraArgs){
+				printf("PUT error: must have exactly one argument\n");
+			} //if (extraArgs)
+			else{
+				//send put <filename> to server
+				i=write(sock, buf, strlen(buf));
+				if (i<0){
+					perror("ERROR: Failed to write command to server.\n");
+					close(sock);
+					exit(EXIT_FAILURE);
+				} //if (i<0)
 			
-			put_file(dick, sock);
+				put_file(dick, sock);
+			} //else
+
 		}
 		// WRITE/READ for commands: LS, PWD
 		else {
