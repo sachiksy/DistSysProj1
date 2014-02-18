@@ -61,7 +61,7 @@ void put_file(char* fname, int client_id) {
 		//reading the file and sending it bytes to server
 		do {
 			size = fread(data, 1, sizeof(data), doc);
-			printf("The bytes read are %s\n", data);
+			//printf("The bytes read are %s\n", data); //tk
 			
 			//Problems with fread()
 			if (size < 0) {
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]){
 							close(sock);
 							exit(EXIT_FAILURE);
 						} //if (size < 0)
-						printf("closing file\n");
+						//printf("closing file\n"); //tk
 						fclose(doc);
 					} //else
 				} //else
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]){
 				exit(5);
 			} //if (i<0)
 		} //else
-		printf("Server reply: %s\n", buf);
+		printf("%s\n", buf);
 	} //while(strcmp(buf, "exit")!=0)
 	
 	close(sock);

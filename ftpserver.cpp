@@ -243,6 +243,7 @@ void *Echo (void *threadargs){
 								strcat(lsContents, "\n");
 							}
 						}
+						printf("\n");
 						closedir(dir);
 						strcpy(str, lsContents);
 					}
