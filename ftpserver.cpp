@@ -236,9 +236,12 @@ void *Echo (void *threadargs){
 					}
 					else {
 						while ((entry = readdir(dir)) != NULL){
-							printf("  %s\n", entry->d_name);
-							strcat(lsContents, entry->d_name);
-							strcat(lsContents, "\n");
+							//Check each first char to skip '.' and '..'
+							if ((entry->d_name)[0] != '.') {
+								printf("  %s\n", entry->d_name);
+								strcat(lsContents, entry->d_name);
+								strcat(lsContents, "\n");
+							}
 						}
 						closedir(dir);
 						strcpy(str, lsContents);
